@@ -211,4 +211,11 @@ object AppModule {
         @ApplicationContext context: Context,
         client: ListenTogetherClient,
     ): ListenTogetherManager = ListenTogetherManager(client, context)
+
+    @Singleton
+    @Provides
+    fun provideDisplayBridge(
+        @ApplicationContext context: Context,
+    ): com.metrolist.music.displaybridge.DisplayBridge =
+        com.metrolist.music.displaybridge.DisplayBridge(context)
 }

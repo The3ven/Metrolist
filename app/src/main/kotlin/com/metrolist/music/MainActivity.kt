@@ -240,6 +240,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var listenTogetherManager: com.metrolist.music.listentogether.ListenTogetherManager
 
+    @Inject
+    lateinit var displayBridge: com.metrolist.music.displaybridge.DisplayBridge
+
     private lateinit var navController: NavHostController
     private var pendingIntent: Intent? = null
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
@@ -266,6 +269,9 @@ class MainActivity : ComponentActivity() {
                         Timber.tag("MainActivity").d("PlayerConnection created successfully")
                         // Connect Listen Together manager to player
                         listenTogetherManager.setPlayerConnection(playerConnection)
+                        // Connect the external mini-player display bridge to the player
+                        displayBridge.setPlayerConnection(playerConnection)
+                        displayBridge.start()
                     } catch (e: Exception) {
                         Timber.tag("MainActivity").e(e, "Failed to create PlayerConnection")
                         // Retry after a delay of 500ms
@@ -275,6 +281,8 @@ class MainActivity : ComponentActivity() {
                                 playerConnection = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
                                 playerConnectionSnapshot = playerConnection
                                 listenTogetherManager.setPlayerConnection(playerConnection)
+                                displayBridge.setPlayerConnection(playerConnection)
+                                displayBridge.start()
                             } catch (e2: Exception) {
                                 Timber.tag("MainActivity").e(e2, "Failed to create PlayerConnection on retry")
                             }
@@ -286,6 +294,7 @@ class MainActivity : ComponentActivity() {
             override fun onServiceDisconnected(name: ComponentName?) {
                 // Disconnect Listen Together manager
                 listenTogetherManager.setPlayerConnection(null)
+                displayBridge.setPlayerConnection(null)
                 playerConnection?.dispose()
                 // DO NOT null out playerConnection here - keep it for when service reconnects
                 // DO NOT update playerConnectionSnapshot - this is the key to preventing recomposition
@@ -314,6 +323,11 @@ class MainActivity : ComponentActivity() {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1000)
             }
+        }
+
+        // Mic permission for the audio-reactive mini-player display (Visualizer/FFT).
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1001)
         }
 
         // Start the playback service explicitly once so it can outlive binding.

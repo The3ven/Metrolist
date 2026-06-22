@@ -208,6 +208,11 @@ val ListenTogetherUserIdKey = stringPreferencesKey("listenTogetherUserId")
 val ListenTogetherIsHostKey = booleanPreferencesKey("listenTogetherIsHost")
 val ListenTogetherSessionTimestampKey = longPreferencesKey("listenTogetherSessionTimestamp")
 
+// Mini-Player Display bridge (external WebSocket display, e.g. ESP32 desk gadget)
+val EnableMiniPlayerDisplayKey = booleanPreferencesKey("enableMiniPlayerDisplay")
+// Empty = auto-discover via mDNS (metrolist.local); else a host/IP like "192.168.1.42".
+val MiniPlayerDisplayHostKey = stringPreferencesKey("miniPlayerDisplayHost")
+
 val LastFMSessionKey = stringPreferencesKey("lastfmSession")
 val LastFMUsernameKey = stringPreferencesKey("lastfmUsername")
 val EnableLastFMScrobblingKey = booleanPreferencesKey("lastfmScrobblingEnable")
