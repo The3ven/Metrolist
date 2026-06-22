@@ -21,6 +21,10 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.constants.AudioQualityKey
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.constants.AutoExportDownloadsKey
+import com.metrolist.music.utils.MusicFileExporter
+import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
 import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.di.DownloadCache
@@ -35,6 +39,7 @@ import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -58,6 +63,7 @@ constructor(
     @PlayerCache val playerCache: Cache,
 ) {
     private val TAG = "DownloadUtil"
+    private val appContext = context  // for exporting downloads to the public Music folder
     private val connectivityManager = context.getSystemService<ConnectivityManager>()!!
     private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
     private val songUrlCache = HashMap<String, Pair<String, Long>>()
@@ -200,6 +206,25 @@ constructor(
                             when (download.state) {
                                 Download.STATE_COMPLETED -> {
                                     database.updateDownloadedInfo(download.request.id, true, LocalDateTime.now())
+                                    // Optionally copy the finished download to the public
+                                    // Music/Metrolist folder (off-device transfer / smartwatches).
+                                    if (appContext.dataStore.get(AutoExportDownloadsKey, false)) {
+                                        runCatching {
+                                            val songId = download.request.id
+                                            val song = database.song(songId).first()
+                                            if (song != null) {
+                                                MusicFileExporter.exportToMusicFolder(
+                                                    context = appContext,
+                                                    songId = songId,
+                                                    title = song.song.title,
+                                                    artist = song.artists.joinToString(", ") { it.name }
+                                                        .ifEmpty { "Unknown Artist" },
+                                                    mimeType = "audio/mp4",
+                                                    cache = downloadCache,
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                                 Download.STATE_FAILED,
                                 Download.STATE_STOPPED,

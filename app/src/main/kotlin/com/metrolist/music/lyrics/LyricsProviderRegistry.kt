@@ -14,6 +14,7 @@ object LyricsProviderRegistry {
         "LyricsPlus" to LyricsPlusProvider,
         "YouTubeSubtitle" to YouTubeSubtitleLyricsProvider,
         "YouTube" to YouTubeLyricsProvider,
+        "Netease" to NeteaseLyricsProvider,
     )
 
     val providerNames = providerMap.keys.toList()
@@ -42,6 +43,7 @@ object LyricsProviderRegistry {
         "LyricsPlus",
         "YouTubeSubtitle",
         "YouTube",
+        "Netease",
     )
 
     fun getOrderedProviders(orderString: String): List<LyricsProvider> {

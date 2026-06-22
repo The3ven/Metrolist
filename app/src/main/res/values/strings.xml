@@ -283,6 +283,10 @@
     <string name="audio_quality_auto">Auto</string>
     <string name="audio_quality_high">High</string>
     <string name="audio_quality_low">Low</string>
+    <string name="audio_quality_lossless">Lossless</string>
+    <string name="audio_quality_hi_res_lossless">Hi-Res Lossless</string>
+    <string name="hifi_api_url">HiFi API URL</string>
+    <string name="hifi_api_url_desc">External lossless stream resolver for Lossless/Hi-Res quality. Leave empty to disable.</string>
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
@@ -302,6 +306,8 @@
     <string name="max_cache_size">Max cache size</string>
     <string name="unlimited">Unlimited</string>
     <string name="clear_all_downloads">Clear all downloads</string>
+    <string name="auto_export_downloads">Export downloads to Music folder</string>
+    <string name="auto_export_downloads_desc">Copy each downloaded song to Music/Metrolist as a file (for transfer / smartwatches)</string>
     <string name="max_image_cache_size">Max image cache size</string>
     <string name="clear_image_cache">Clear image cache</string>
     <string name="max_song_cache_size">Max song cache size</string>
