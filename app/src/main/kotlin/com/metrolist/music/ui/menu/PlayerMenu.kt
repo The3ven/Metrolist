@@ -99,6 +99,8 @@ import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
+import com.metrolist.music.ui.component.ShareToStoryDialog
+import com.metrolist.music.share.ShareLink
 import com.metrolist.music.ui.component.VolumeSlider
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
@@ -150,6 +152,20 @@ fun PlayerMenu(
         remember(mediaMetadata.artists) {
             mediaMetadata.artists.filter { it.id != null }
         }
+
+    var showShareStoryDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (showShareStoryDialog) {
+        ShareToStoryDialog(
+            title = mediaMetadata.title,
+            artist = mediaMetadata.artists.joinToString(", ") { it.name }.ifEmpty { "Unknown Artist" },
+            coverArtUrl = mediaMetadata.thumbnailUrl,
+            linkUrl = ShareLink.forStory(mediaMetadata.id),
+            onDismiss = { showShareStoryDialog = false },
+        )
+    }
 
     var showChoosePlaylistDialog by rememberSaveable {
         mutableStateOf(false)
@@ -397,6 +413,18 @@ fun PlayerMenu(
                                     .show()
                                 onDismiss()
                             },
+                        ),
+                        NewAction(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.share),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            text = stringResource(R.string.share_to_instagram_story),
+                            onClick = { showShareStoryDialog = true },
                         ),
                     ),
                 columns = if (isListenTogetherGuest) 2 else 3,
