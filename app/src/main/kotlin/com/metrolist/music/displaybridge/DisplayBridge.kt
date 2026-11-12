@@ -171,22 +171,33 @@ class DisplayBridge @Inject constructor(
 
     private fun openConnection() {
         teardown()
-        if (manualHost.isNotEmpty()) {
-            connectTo(normalizeWsUrl(manualHost))
+        val url = normalizeWsUrl(manualHost)
+        if (url != null) {
+            connectTo(url)
         } else {
             startDiscovery()
         }
     }
 
-    private fun normalizeWsUrl(host: String): String {
-        val cleaned = host.removePrefix("ws://").removePrefix("http://").removeSuffix("/")
+    /** Builds a ws:// URL from a user-entered host, or null if the host is blank/unusable. */
+    private fun normalizeWsUrl(host: String): String? {
+        val cleaned = host.trim().removePrefix("ws://").removePrefix("http://").removeSuffix("/")
+        // Need at least a host[:port] before the /app path.
+        val hostPart = cleaned.substringBefore(WS_PATH)
+        if (hostPart.isBlank() || hostPart.startsWith(":")) return null
         return if (cleaned.contains(WS_PATH)) "ws://$cleaned" else "ws://$cleaned$WS_PATH"
     }
 
     private fun connectTo(url: String) {
         Timber.tag(TAG).i("connecting to %s", url)
         _status.value = Status(LinkState.Connecting, url)
-        val request = Request.Builder().url(url).header("User-Agent", context.packageName).build()
+        val request = runCatching {
+            Request.Builder().url(url).header("User-Agent", context.packageName).build()
+        }.getOrElse {
+            Timber.tag(TAG).w(it, "invalid display address: %s", url)
+            scheduleReconnect("invalid address")
+            return
+        }
         webSocket = httpClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 connected = true
