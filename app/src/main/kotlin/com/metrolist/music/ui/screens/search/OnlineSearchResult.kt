@@ -95,7 +95,18 @@ import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
+import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.jiosaavn.JioSaavnApi
+import com.metrolist.music.jiosaavn.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
+import coil3.compose.AsyncImage
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.withContext
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.EmptyPlaceholder
@@ -212,6 +223,20 @@ fun OnlineSearchResult(
 
     val searchFilter by viewModel.filter.collectAsStateWithLifecycle()
     val searchSummary = viewModel.summaryPage
+
+    // JioSaavn results injected into the main search (shown under the "All" tab).
+    var jioSaavnResults by remember { mutableStateOf<List<MediaMetadata>>(emptyList()) }
+    LaunchedEffect(decodedQuery) {
+        jioSaavnResults =
+            if (decodedQuery.isBlank()) {
+                emptyList()
+            } else {
+                withContext(Dispatchers.IO) {
+                    runCatching { JioSaavnApi.search(decodedQuery).map { it.toMediaMetadata() } }
+                        .getOrDefault(emptyList())
+                }
+            }
+    }
     val itemsPage by remember(searchFilter) {
         derivedStateOf {
             searchFilter?.value?.let {
@@ -492,6 +517,55 @@ fun OnlineSearchResult(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     if (searchFilter == null) {
+                        if (jioSaavnResults.isNotEmpty()) {
+                            item(key = "jiosaavn_title") {
+                                NavigationTitle(stringResource(R.string.jiosaavn_search))
+                            }
+                            itemsIndexed(
+                                items = jioSaavnResults,
+                                key = { index, track -> "jiosaavn/${track.id}/$index" },
+                            ) { index, track ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = "JioSaavn: $decodedQuery",
+                                                    items = jioSaavnResults.map { it.toMediaItem() },
+                                                    startIndex = index,
+                                                ),
+                                            )
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                                        .animateItem(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    AsyncImage(
+                                        model = track.thumbnailUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(RoundedCornerShape(4.dp)),
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = track.title,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            maxLines = 1,
+                                        )
+                                        Text(
+                                            text = track.artists.joinToString(", ") { it.name },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         searchSummary?.summaries?.forEach { summary ->
                             item {
                                 NavigationTitle(summary.title)
