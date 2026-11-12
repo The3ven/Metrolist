@@ -112,6 +112,8 @@ enum class AudioQuality {
     AUTO,
     LOW,
     HIGH,
+    LOSSLESS,
+    HI_RES_LOSSLESS,
 }
 
 val AudioOffload = booleanPreferencesKey("enableOffload")
@@ -142,6 +144,14 @@ val AutoLoadMoreKey = booleanPreferencesKey("autoLoadMore")
 val AutoRadioQueueKey = booleanPreferencesKey("autoRadioQueue")
 val DisableLoadMoreWhenRepeatAllKey = booleanPreferencesKey("disableLoadMoreWhenRepeatAll")
 val AutoDownloadOnLikeKey = booleanPreferencesKey("autoDownloadOnLike")
+val AutoExportDownloadsKey = booleanPreferencesKey("autoExportDownloads")
+val ShakeToSendLogsKey = booleanPreferencesKey("shakeToSendLogs")
+val EnableNeteaseKey = booleanPreferencesKey("enableNetease")
+val HifiApiUrlKey = stringPreferencesKey("hifiApiUrl")
+val EnableMiniPlayerDisplayKey = booleanPreferencesKey("enableMiniPlayerDisplay")
+val MiniPlayerDisplayHostKey = stringPreferencesKey("miniPlayerDisplayHost")
+val EnableWebRemoteKey = booleanPreferencesKey("enableWebRemote")
+val WebRemotePortKey = intPreferencesKey("webRemotePort")
 val SimilarContent = booleanPreferencesKey("similarContent")
 val AutoSkipNextOnErrorKey = booleanPreferencesKey("autoSkipNextOnError")
 val AutoplayKey = booleanPreferencesKey("autoplay")

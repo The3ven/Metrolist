@@ -172,6 +172,7 @@ import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.BottomSheetMenu
+import com.metrolist.music.ui.component.ShakeToSendLogs
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
@@ -239,6 +240,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var listenTogetherManager: com.metrolist.music.listentogether.ListenTogetherManager
 
+    @Inject
+    lateinit var displayBridge: com.metrolist.music.displaybridge.DisplayBridge
+
+    @Inject
+    lateinit var webRemoteServer: com.metrolist.music.webremote.WebRemoteServer
+
     private lateinit var navController: NavHostController
     private var pendingIntent: Intent? = null
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
@@ -262,12 +269,18 @@ class MainActivity : ComponentActivity() {
                     playerConnection = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
                     playerConnectionSnapshot = playerConnection
                     listenTogetherManager.setPlayerConnection(playerConnection)
+                    displayBridge.setPlayerConnection(playerConnection)
+                    displayBridge.start()
+                    webRemoteServer.setPlayerConnection(playerConnection)
+                    webRemoteServer.start()
                 }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
                 // Disconnect Listen Together manager
                 listenTogetherManager.setPlayerConnection(null)
+                displayBridge.setPlayerConnection(null)
+                webRemoteServer.setPlayerConnection(null)
                 playerConnection?.dispose()
                 // DO NOT null out playerConnection here - keep it for when service reconnects
                 // DO NOT update playerConnectionSnapshot - this is the key to preventing recomposition
@@ -1336,6 +1349,8 @@ class MainActivity : ComponentActivity() {
                         state = LocalBottomSheetPageState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
+
+                    ShakeToSendLogs()
 
                     if (showAccountDialog) {
                         AccountSettingsDialog(

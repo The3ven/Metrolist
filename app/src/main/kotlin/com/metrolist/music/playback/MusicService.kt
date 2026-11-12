@@ -24,6 +24,9 @@ import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.audiofx.AudioEffect
+import com.metrolist.music.audius.AudiusApi
+import com.metrolist.music.jiosaavn.JioSaavnApi
+import com.metrolist.music.soundcloud.SoundCloudApi
 import com.metrolist.music.playback.audio.VolumeNormalizationAudioProcessor
 import android.net.ConnectivityManager
 import android.os.Binder
@@ -95,6 +98,7 @@ import com.metrolist.music.constants.AndroidAutoTargetPlaylistKey
 import com.metrolist.music.constants.AudioNormalizationKey
 import com.metrolist.music.constants.AudioOffload
 import com.metrolist.music.constants.AudioQualityKey
+import com.metrolist.music.constants.HifiApiUrlKey
 import com.metrolist.music.constants.AudioTrackPlaybackParamsKey
 import com.metrolist.music.constants.AutoDownloadOnLikeKey
 import com.metrolist.music.constants.AutoLoadMoreKey
@@ -3727,6 +3731,27 @@ class MusicService :
         return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
 
+            // Alternate audio sources (JioSaavn / SoundCloud / Audius) resolve their own
+            // stream URLs on demand, keyed by a media-id prefix.
+            if (mediaId.startsWith(JioSaavnApi.ID_PREFIX) ||
+                mediaId.startsWith(SoundCloudApi.ID_PREFIX) ||
+                mediaId.startsWith(AudiusApi.ID_PREFIX)
+            ) {
+                val need = if (dataSpec.length >= 0) dataSpec.length else 1L
+                val cached = downloadCache.isCached(mediaId, dataSpec.position, need) ||
+                    (dataStore.get(EnableSongCacheKey, true) && playerCache.isCached(mediaId, dataSpec.position, need))
+                if (cached) return@Factory dataSpec
+                val resolved = when {
+                    mediaId.startsWith(JioSaavnApi.ID_PREFIX) ->
+                        runBlocking(Dispatchers.IO) { JioSaavnApi.getStreamUrl(mediaId.removePrefix(JioSaavnApi.ID_PREFIX)) }
+                    mediaId.startsWith(SoundCloudApi.ID_PREFIX) ->
+                        runBlocking(Dispatchers.IO) { SoundCloudApi.getStreamUrl(mediaId.removePrefix(SoundCloudApi.ID_PREFIX)) }
+                    else ->
+                        AudiusApi.streamUrl(mediaId.removePrefix(AudiusApi.ID_PREFIX))
+                }
+                return@Factory if (resolved != null) dataSpec.withUri(resolved.toUri()) else dataSpec
+            }
+
             // Check if we need to bypass cache for quality change
             val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)
 
@@ -3787,6 +3812,7 @@ class MusicService :
                         mediaId,
                         audioQuality = audioQuality,
                         connectivityManager = connectivityManager,
+                        hifiApiUrl = dataStore.get(HifiApiUrlKey, ""),
                     )
                 }.getOrElse { throwable ->
                     when (throwable) {
@@ -4638,6 +4664,7 @@ class MusicService :
                             videoId = mediaId,
                             audioQuality = audioQuality,
                             connectivityManager = connectivityManager,
+                            hifiApiUrl = dataStore.get(HifiApiUrlKey, ""),
                         ).getOrNull()
                 playbackData?.streamUrl
             } catch (e: Exception) {

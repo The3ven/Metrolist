@@ -144,6 +144,7 @@ object YTPlayerUtils {
         playlistId: String? = null,
         audioQuality: AudioQuality,
         connectivityManager: ConnectivityManager,
+        hifiApiUrl: String? = null,
     ): Result<PlaybackData> = runCatching {
         Timber.tag(TAG).d("=== PLAYER RESPONSE FOR PLAYBACK ===")
         Timber.tag(TAG).d("videoId: $videoId")
@@ -527,6 +528,21 @@ object YTPlayerUtils {
             throw Exception("Could not find format")
         }
 
+        // Optional: swap in a lossless stream from an external HiFi API. Gated — a
+        // no-op unless the user configured a HiFi URL and picked a lossless quality,
+        // so default playback is unaffected. Falls back to the YouTube stream.
+        if (!hifiApiUrl.isNullOrBlank() &&
+            (audioQuality == AudioQuality.LOSSLESS || audioQuality == AudioQuality.HI_RES_LOSSLESS)
+        ) {
+            val qualityParam =
+                if (audioQuality == AudioQuality.HI_RES_LOSSLESS) "hi_res_lossless" else "lossless"
+            val hifiStreamUrl = HifiApi.resolveStreamUrlOrNull(hifiApiUrl, videoId, qualityParam)
+            if (!hifiStreamUrl.isNullOrBlank() && validateStatus(hifiStreamUrl)) {
+                Timber.tag(logTag).i("Using HiFi API stream URL for quality=$audioQuality")
+                streamUrl = hifiStreamUrl
+            }
+        }
+
         if (streamUrl == null) {
             Timber.tag(logTag).e("Could not find stream url")
             throw Exception("Could not find stream url")
@@ -592,7 +608,9 @@ object YTPlayerUtils {
         }
 
         val format = when (audioQuality) {
-            AudioQuality.HIGH -> {
+            // Lossless qualities reuse the HIGH YouTube-format pick; the actual lossless
+            // stream URL (if any) is swapped in later from the external HiFi API.
+            AudioQuality.HIGH, AudioQuality.LOSSLESS, AudioQuality.HI_RES_LOSSLESS -> {
                 audioCapableFormats.maxWithOrNull(
                     compareBy<PlayerResponse.StreamingData.Format> { format ->
                         when (format.audioQuality) {

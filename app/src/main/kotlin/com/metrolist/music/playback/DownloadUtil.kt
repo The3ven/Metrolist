@@ -25,8 +25,17 @@ import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.di.DownloadCache
 import com.metrolist.music.di.PlayerCache
+import com.metrolist.music.audius.AudiusApi
+import com.metrolist.music.constants.AutoExportDownloadsKey
+import com.metrolist.music.jiosaavn.JioSaavnApi
+import com.metrolist.music.soundcloud.SoundCloudApi
+import com.metrolist.music.utils.MusicFileExporter
 import com.metrolist.music.utils.YTPlayerUtils
+import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.enumPreference
+import com.metrolist.music.utils.get
+import androidx.media3.common.MimeTypes
+import kotlinx.coroutines.flow.first
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -58,6 +67,7 @@ constructor(
     @PlayerCache val playerCache: Cache,
 ) {
     private val TAG = "DownloadUtil"
+    private val appContext = context
     private val connectivityManager = context.getSystemService<ConnectivityManager>()!!
     private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
     private val songUrlCache = HashMap<String, Pair<String, Long>>()
@@ -88,6 +98,27 @@ constructor(
         ) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
             val length = if (dataSpec.length >= 0) dataSpec.length else 1
+
+            // Alternate audio sources resolve their own stream URLs by media-id prefix.
+            if (mediaId.startsWith(JioSaavnApi.ID_PREFIX) ||
+                mediaId.startsWith(SoundCloudApi.ID_PREFIX) ||
+                mediaId.startsWith(AudiusApi.ID_PREFIX)
+            ) {
+                if (downloadCache.isCached(mediaId, dataSpec.position, length) ||
+                    playerCache.isCached(mediaId, dataSpec.position, length)
+                ) {
+                    return@Factory dataSpec
+                }
+                val resolved = when {
+                    mediaId.startsWith(JioSaavnApi.ID_PREFIX) ->
+                        runBlocking(Dispatchers.IO) { JioSaavnApi.getStreamUrl(mediaId.removePrefix(JioSaavnApi.ID_PREFIX)) }
+                    mediaId.startsWith(SoundCloudApi.ID_PREFIX) ->
+                        runBlocking(Dispatchers.IO) { SoundCloudApi.getStreamUrl(mediaId.removePrefix(SoundCloudApi.ID_PREFIX)) }
+                    else ->
+                        AudiusApi.streamUrl(mediaId.removePrefix(AudiusApi.ID_PREFIX))
+                }
+                return@Factory if (resolved != null) dataSpec.withUri(resolved.toUri()) else dataSpec
+            }
 
             if (playerCache.isCached(mediaId, dataSpec.position, length)) {
                 return@Factory dataSpec
@@ -200,6 +231,24 @@ constructor(
                             when (download.state) {
                                 Download.STATE_COMPLETED -> {
                                     database.updateDownloadedInfo(download.request.id, true, LocalDateTime.now())
+                                    if (appContext.dataStore[AutoExportDownloadsKey] == true) {
+                                        runCatching {
+                                            val songId = download.request.id
+                                            val song = database.song(songId).first()
+                                            if (song != null) {
+                                                val artist = song.artists.joinToString(", ") { it.name }
+                                                    .ifEmpty { "Unknown Artist" }
+                                                MusicFileExporter.exportToMusicFolder(
+                                                    context = appContext,
+                                                    songId = songId,
+                                                    title = song.song.title,
+                                                    artist = artist,
+                                                    mimeType = MimeTypes.AUDIO_MP4,
+                                                    cache = downloadCache,
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                                 Download.STATE_FAILED,
                                 Download.STATE_STOPPED,

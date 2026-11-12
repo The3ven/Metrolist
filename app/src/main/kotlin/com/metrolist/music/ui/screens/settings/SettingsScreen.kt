@@ -238,6 +238,13 @@ fun SettingsScreen(
                         onClick = { navController.navigate("settings/about") }
                     )
                 )
+                add(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.bug_report),
+                        title = { Text(stringResource(R.string.logs)) },
+                        onClick = { navController.navigate("settings/logs") }
+                    )
+                )
                 if (BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME) {
                     val releaseInfo = Updater.getCachedLatestRelease()
                     val downloadUrl = releaseInfo?.let { Updater.getDownloadUrlForCurrentVariant(it) }

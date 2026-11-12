@@ -65,6 +65,11 @@ fun StreamSourcesSettings(
     val (webCreator, onWebCreatorChange) = rememberPreference(StreamSourceWebCreatorKey, defaultValue = true)
     val (androidCreator, onAndroidCreatorChange) = rememberPreference(StreamSourceAndroidCreatorKey, defaultValue = false)
 
+    val showSourceSearch = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (showSourceSearch.value) {
+        com.metrolist.music.ui.component.SourceSearchDialog(onDismiss = { showSourceSearch.value = false })
+    }
+
     // Effective resolution order: WEB_REMIX (main client) then the fallback clients, mirroring the
     // order in YTPlayerUtils. Only enabled clients appear; the ANDROID_VR variants collapse to one.
     val streamOrder = listOf(
@@ -122,6 +127,20 @@ fun StreamSourcesSettings(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+
+        Material3SettingsGroup(
+            title = stringResource(R.string.jiosaavn_search),
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.search),
+                    title = { Text(stringResource(R.string.jiosaavn_search)) },
+                    description = { Text(stringResource(R.string.jiosaavn_search_desc)) },
+                    onClick = { showSourceSearch.value = true },
+                ),
+            ),
+        )
+
+        Spacer(modifier = Modifier.height(27.dp))
 
         Material3SettingsGroup(
             title = stringResource(R.string.stream_source_web_clients),

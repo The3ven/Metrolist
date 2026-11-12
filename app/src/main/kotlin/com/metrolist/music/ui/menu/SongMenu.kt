@@ -93,8 +93,10 @@ import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
+import com.metrolist.music.ui.component.ShareToStoryDialog
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TextFieldDialog
+import com.metrolist.music.share.ShareLink
 import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.viewmodels.CachePlaylistViewModel
 import kotlinx.coroutines.Dispatchers
@@ -160,6 +162,20 @@ fun SongMenu(
 
     var showEditDialog by rememberSaveable {
         mutableStateOf(false)
+    }
+
+    var showShareStoryDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (showShareStoryDialog) {
+        ShareToStoryDialog(
+            title = song.song.title,
+            artist = song.artists.joinToString(", ") { it.name }.ifEmpty { "Unknown Artist" },
+            coverArtUrl = song.song.thumbnailUrl,
+            linkUrl = ShareLink.forStory(song.id),
+            onDismiss = { showShareStoryDialog = false },
+        )
     }
 
     val TextFieldValueSaver: Saver<TextFieldValue, *> =
@@ -558,6 +574,18 @@ fun SongMenu(
                                     }
                                 context.startActivity(Intent.createChooser(intent, null))
                             },
+                        ),
+                        NewAction(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.share),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            text = stringResource(R.string.share_to_instagram_story),
+                            onClick = { showShareStoryDialog = true },
                         ),
                     ),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),

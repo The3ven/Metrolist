@@ -387,7 +387,7 @@ object ComposeToImage {
     // Android port : Yahel Bouaziz <yahel at kayenko.com>
     // http://www.kayenko.com
     // ported to Kotlin and adapted
-    private fun fastBlur(
+    internal fun fastBlur(
         sentBitmap: Bitmap,
         scale: Float,
         radius: Int,

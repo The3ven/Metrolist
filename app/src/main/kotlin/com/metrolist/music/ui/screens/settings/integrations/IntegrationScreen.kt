@@ -52,6 +52,20 @@ fun IntegrationScreen(
                     onClick = {
                         navController.navigate("settings/integrations/lastfm")
                     }
+                ),
+                IntegrationCardItem(
+                    icon = painterResource(R.drawable.cast),
+                    title = { Text(stringResource(R.string.miniplayer_display)) },
+                    onClick = {
+                        navController.navigate("settings/integrations/miniplayer_display")
+                    }
+                ),
+                IntegrationCardItem(
+                    icon = painterResource(R.drawable.link),
+                    title = { Text(stringResource(R.string.web_remote)) },
+                    onClick = {
+                        navController.navigate("settings/integrations/web_remote")
+                    }
                 )
             )
         )

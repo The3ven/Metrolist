@@ -187,11 +187,13 @@ android {
         }
         debug {
             if (applicationIdOverride == null) {
-                applicationIdSuffix = ".debug"
+                // Distinct package so this rebuild installs alongside the original
+                // com.metrolist.music.debug instead of overwriting it.
+                applicationIdSuffix = ".rebuild"
             }
             isDebuggable = true
             if (appNameOverride == null) {
-                resValue("string", "app_name", "Metrolist Debug")
+                resValue("string", "app_name", "Metrolist Rebuild")
             }
             signingConfig =
                 if (workflowDebugKeystoreFile != null) {
@@ -356,6 +358,9 @@ dependencies {
 
     implementation(libs.material3)
     implementation(libs.palette)
+    implementation(libs.zxing.core)
+    implementation(libs.nanohttpd)
+    implementation(libs.jmdns)
     implementation(libs.materialKolor)
 
     implementation(libs.appcompat)

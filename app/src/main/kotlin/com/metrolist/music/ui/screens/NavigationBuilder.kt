@@ -53,6 +53,7 @@ import com.metrolist.music.ui.screens.settings.PlayerSettings
 import com.metrolist.music.ui.screens.settings.PrivacySettings
 import com.metrolist.music.ui.screens.settings.RomanizationSettings
 import com.metrolist.music.ui.screens.settings.SettingsScreen
+import com.metrolist.music.ui.screens.settings.LogsSettings
 import com.metrolist.music.ui.screens.settings.StorageSettings
 import com.metrolist.music.ui.screens.settings.StreamSourcesSettings
 import com.metrolist.music.ui.screens.settings.ThemeScreen
@@ -61,6 +62,8 @@ import com.metrolist.music.ui.screens.settings.integrations.DiscordSettings
 import com.metrolist.music.ui.screens.settings.integrations.IntegrationScreen
 import com.metrolist.music.ui.screens.settings.integrations.LastFMSettings
 import com.metrolist.music.ui.screens.settings.integrations.ListenTogetherSettings
+import com.metrolist.music.ui.screens.settings.integrations.MiniPlayerDisplaySettings
+import com.metrolist.music.ui.screens.settings.integrations.WebRemoteSettings
 
 import com.metrolist.music.ui.screens.wrapped.WrappedScreen
 import com.metrolist.music.utils.rememberEnumPreference
@@ -389,6 +392,10 @@ fun NavGraphBuilder.navigationBuilder(
         BackupAndRestore(navController)
     }
 
+    composable("settings/logs") {
+        LogsSettings(navController)
+    }
+
     composable("settings/integrations") {
         IntegrationScreen(navController)
     }
@@ -399,6 +406,14 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("settings/integrations/lastfm") {
         LastFMSettings(navController)
+    }
+
+    composable("settings/integrations/miniplayer_display") {
+        MiniPlayerDisplaySettings(navController)
+    }
+
+    composable("settings/integrations/web_remote") {
+        WebRemoteSettings(navController)
     }
 
     composable(route = "settings/integrations/listen_together") {

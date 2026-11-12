@@ -81,6 +81,8 @@ import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
+import com.metrolist.music.ui.component.ShareToStoryDialog
+import com.metrolist.music.share.ShareLink
 import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
@@ -117,7 +119,21 @@ fun YouTubeSongMenu(
         }
     }
 
-    var showChoosePlaylistDialog by rememberSaveable {  
+    var showShareStoryDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (showShareStoryDialog) {
+        ShareToStoryDialog(
+            title = song.title,
+            artist = song.artists.joinToString(", ") { it.name }.ifEmpty { "Unknown Artist" },
+            coverArtUrl = song.thumbnail,
+            linkUrl = ShareLink.forStory(song.id),
+            onDismiss = { showShareStoryDialog = false },
+        )
+    }
+
+    var showChoosePlaylistDialog by rememberSaveable {
         mutableStateOf(false)  
     }  
 
@@ -342,6 +358,18 @@ fun YouTubeSongMenu(
                             context.startActivity(Intent.createChooser(intent, null))
                             onDismiss()
                         }
+                    ),
+                    NewAction(
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.share),
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        text = stringResource(R.string.share_to_instagram_story),
+                        onClick = { showShareStoryDialog = true }
                     )
                 ),
                 columns = if (isGuest) 2 else 3,
