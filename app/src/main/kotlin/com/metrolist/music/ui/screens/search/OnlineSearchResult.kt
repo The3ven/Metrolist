@@ -98,14 +98,20 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.jiosaavn.JioSaavnApi
 import com.metrolist.music.jiosaavn.toMediaMetadata
+import com.metrolist.music.soundcloud.SoundCloudApi
+import com.metrolist.music.soundcloud.toMediaMetadata
+import com.metrolist.music.audius.AudiusApi
+import com.metrolist.music.audius.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.ChipsRow
@@ -224,18 +230,26 @@ fun OnlineSearchResult(
     val searchFilter by viewModel.filter.collectAsStateWithLifecycle()
     val searchSummary = viewModel.summaryPage
 
-    // JioSaavn results injected into the main search (shown under the "All" tab).
+    // Extra music sources injected into the main search (shown under the "All" tab).
     var jioSaavnResults by remember { mutableStateOf<List<MediaMetadata>>(emptyList()) }
+    var soundCloudResults by remember { mutableStateOf<List<MediaMetadata>>(emptyList()) }
+    var audiusResults by remember { mutableStateOf<List<MediaMetadata>>(emptyList()) }
     LaunchedEffect(decodedQuery) {
-        jioSaavnResults =
-            if (decodedQuery.isBlank()) {
-                emptyList()
-            } else {
-                withContext(Dispatchers.IO) {
-                    runCatching { JioSaavnApi.search(decodedQuery).map { it.toMediaMetadata() } }
-                        .getOrDefault(emptyList())
-                }
+        if (decodedQuery.isBlank()) {
+            jioSaavnResults = emptyList()
+            soundCloudResults = emptyList()
+            audiusResults = emptyList()
+        } else {
+            val (js, sc, au) = withContext(Dispatchers.IO) {
+                val jsD = async { runCatching { JioSaavnApi.search(decodedQuery).map { it.toMediaMetadata() } }.getOrDefault(emptyList()) }
+                val scD = async { runCatching { SoundCloudApi.search(decodedQuery).map { it.toMediaMetadata() } }.getOrDefault(emptyList()) }
+                val auD = async { runCatching { AudiusApi.search(decodedQuery).map { it.toMediaMetadata() } }.getOrDefault(emptyList()) }
+                Triple(jsD.await(), scD.await(), auD.await())
             }
+            jioSaavnResults = js
+            soundCloudResults = sc
+            audiusResults = au
+        }
     }
     val itemsPage by remember(searchFilter) {
         derivedStateOf {
@@ -517,54 +531,18 @@ fun OnlineSearchResult(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     if (searchFilter == null) {
-                        if (jioSaavnResults.isNotEmpty()) {
-                            item(key = "jiosaavn_title") {
-                                NavigationTitle(stringResource(R.string.jiosaavn_search))
-                            }
-                            itemsIndexed(
-                                items = jioSaavnResults,
-                                key = { index, track -> "jiosaavn/${track.id}/$index" },
-                            ) { index, track ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = "JioSaavn: $decodedQuery",
-                                                    items = jioSaavnResults.map { it.toMediaItem() },
-                                                    startIndex = index,
-                                                ),
-                                            )
-                                        }
-                                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                                        .animateItem(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    AsyncImage(
-                                        model = track.thumbnailUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .clip(RoundedCornerShape(4.dp)),
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = track.title,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            maxLines = 1,
-                                        )
-                                        Text(
-                                            text = track.artists.joinToString(", ") { it.name },
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                        )
-                                    }
-                                }
-                            }
+                        val playSource: (String, List<MediaMetadata>, Int) -> Unit = { label, results, index ->
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = "$label: $decodedQuery",
+                                    items = results.map { it.toMediaItem() },
+                                    startIndex = index,
+                                ),
+                            )
                         }
+                        sourceSection("JioSaavn", jioSaavnResults) { results, index -> playSource("JioSaavn", results, index) }
+                        sourceSection("SoundCloud", soundCloudResults) { results, index -> playSource("SoundCloud", results, index) }
+                        sourceSection("Audius", audiusResults) { results, index -> playSource("Audius", results, index) }
 
                         searchSummary?.summaries?.forEach { summary ->
                             item {
@@ -644,6 +622,65 @@ fun OnlineSearchResult(
                 lazyListState = lazyListState,
                 icon = R.drawable.mic,
                 onClick = { navController.navigate("recognition") },
+            )
+        }
+    }
+}
+
+/** Adds a titled list of external-source tracks to the search results. No-op when empty. */
+private fun LazyListScope.sourceSection(
+    title: String,
+    results: List<MediaMetadata>,
+    onPlay: (List<MediaMetadata>, Int) -> Unit,
+) {
+    if (results.isEmpty()) return
+    item(key = "src_title_$title") {
+        NavigationTitle(title)
+    }
+    itemsIndexed(
+        items = results,
+        key = { index, track -> "src/$title/${track.id}/$index" },
+    ) { index, track ->
+        SourceTrackRow(
+            track = track,
+            modifier = Modifier.animateItem(),
+            onClick = { onPlay(results, index) },
+        )
+    }
+}
+
+@Composable
+private fun SourceTrackRow(
+    track: MediaMetadata,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = track.thumbnailUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(4.dp)),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+            )
+            Text(
+                text = track.artists.joinToString(", ") { it.name },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
             )
         }
     }
