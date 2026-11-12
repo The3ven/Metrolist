@@ -263,7 +263,12 @@ class DisplayBridge @Inject constructor(
             }
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {}
             override fun onServiceFound(info: NsdServiceInfo) {
-                if (!info.serviceName.contains(SERVICE_NAME_MATCH, ignoreCase = true)) return
+                val name = info.serviceName
+                if (!name.contains(SERVICE_NAME_MATCH, ignoreCase = true)) return
+                // Ignore the in-app Web Remote server (advertises "Metrolist Remote" /
+                // metrolist-remote.local): it's an HTTP control page, not a display WS host,
+                // so connecting to it just loops on a failed handshake.
+                if (name.contains(SERVICE_NAME_EXCLUDE, ignoreCase = true)) return
                 val now = System.currentTimeMillis()
                 if (resolving && now - resolveStartedAtMs < RESOLVE_TIMEOUT_MS) return
                 resolving = true
@@ -468,6 +473,7 @@ class DisplayBridge @Inject constructor(
         private const val TAG = "DisplayBridge"
         private const val SERVICE_TYPE = "_http._tcp."
         private const val SERVICE_NAME_MATCH = "metrolist"
+        private const val SERVICE_NAME_EXCLUDE = "remote"
         private const val WS_PATH = "/app"
         private const val BANDS = 20
         private const val VIZ_MAX_RATE = 20000
