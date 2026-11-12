@@ -51,9 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.media3.exoplayer.offline.Download
-import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalNavController
@@ -87,6 +85,7 @@ fun QueueMenu(
     playerBottomSheetState: BottomSheetState,
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
+    onRemoveFromQueue: (() -> Unit)? = null
 ) {
     mediaMetadata ?: return
     val navController = LocalNavController.current
@@ -96,8 +95,9 @@ fun QueueMenu(
     val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current
 
+    val downloadUtil = LocalDownloadUtil.current
     val librarySong by database.song(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = null)
-    val download by LocalDownloadUtil.current.getDownload(mediaMetadata.id)
+    val download by downloadUtil.getDownload(mediaMetadata.id)
         .collectAsStateWithLifecycle(initialValue = null)
 
     var refetchIconDegree by remember { mutableFloatStateOf(0f) }
@@ -117,12 +117,9 @@ fun QueueMenu(
 
     AddToPlaylistDialog(
         isVisible = showChoosePlaylistDialog,
-        onGetSong = { playlist ->
+        onGetSong = {
             database.withTransaction {
                 insert(mediaMetadata)
-            }
-            coroutineScope.launch(Dispatchers.IO) {
-                playlist.playlist.browseId?.let { YouTube.addToPlaylist(it, mediaMetadata.id) }
             }
             listOf(mediaMetadata.id)
         },
@@ -339,7 +336,7 @@ fun QueueMenu(
         // Play next / Add to queue
         item {
             Material3MenuGroup(
-                items = listOf(
+                items = listOfNotNull(
                     Material3MenuItemData(
                         title = { Text(text = stringResource(R.string.play_next)) },
                         description = { Text(text = stringResource(R.string.play_next_desc)) },
@@ -375,7 +372,22 @@ fun QueueMenu(
                                 playerConnection.addToQueue(mediaMetadata.toMediaItem())
                             }
                         }
-                    )
+                    ),
+                    if (onRemoveFromQueue != null) {
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.remove_from_queue)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.delete), // Uses trashcan icon
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                onDismiss()
+                                onRemoveFromQueue.invoke()
+                            }
+                        )
+                    } else null
                 )
             )
         }
@@ -442,21 +454,7 @@ fun QueueMenu(
                                     )
                                 },
                                 onClick = {
-                                    database.transaction {
-                                        insert(mediaMetadata)
-                                    }
-                                    val downloadRequest =
-                                        DownloadRequest
-                                            .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
-                                            .setCustomCacheKey(mediaMetadata.id)
-                                            .setData(mediaMetadata.title.toByteArray())
-                                            .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
+                                    downloadUtil.download(mediaMetadata)
                                 }
                             )
                         }

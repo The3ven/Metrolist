@@ -403,7 +403,7 @@ class DisplayBridge @Inject constructor(
             "sleep" -> {
                 val value = m ?: 0
                 val sleepTimer = conn.service.sleepTimer
-                if (value > 0) sleepTimer.start(value) else sleepTimer.clear()
+                if (value > 0) sleepTimer?.start(value) else sleepTimer?.clear()
                 pushNowPlaying()
             }
             "voldn" -> stepVolume(-VOLUME_STEP)
@@ -440,7 +440,7 @@ class DisplayBridge @Inject constructor(
     }
 
     private fun sleepRemainingSecs(conn: PlayerConnection): Int {
-        val triggerTime = runCatching { conn.service.sleepTimer.triggerTime }.getOrDefault(-1L)
+        val triggerTime = runCatching { conn.service.sleepTimer?.triggerTime ?: -1L }.getOrDefault(-1L)
         if (triggerTime <= 0) return 0
         return ((triggerTime - System.currentTimeMillis()) / 1000).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
     }

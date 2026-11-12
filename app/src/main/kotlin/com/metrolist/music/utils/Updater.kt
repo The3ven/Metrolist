@@ -40,6 +40,8 @@ object Updater {
     
     private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L // 2 hours
     private const val GITHUB_API_BASE = "https://api.github.com/repos/MetrolistGroup/Metrolist"
+    private const val KMP_LATEST_RELEASE_URL = "https://api.github.com/repos/MetrolistGroup/Metrolist-KMP/releases/latest"
+    private const val KMP_APK_NAME = "Metrolist.apk"
 
     /**
      * Compares two version strings.
@@ -189,6 +191,30 @@ object Updater {
             }
         }
 
+    internal fun parseKmpRelease(response: String): ReleaseInfo? {
+        val release = JSONObject(response)
+        val assets = parseAssets(release.getJSONArray("assets")).filter { it.name == KMP_APK_NAME }
+        val tagName = release.getString("tag_name")
+
+        return ReleaseInfo(
+            tagName = tagName,
+            versionName = tagName.removePrefix("v"),
+            description = release.optString("body").takeUnless { release.isNull("body") }.orEmpty(),
+            releaseDate = release.getString("published_at"),
+            assets = assets,
+        ).takeIf { assets.isNotEmpty() }
+    }
+
+    /**
+     * Returns the latest stable KMP release when it includes an Android APK.
+     */
+    suspend fun getLatestKmpRelease(): Result<ReleaseInfo?> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                parseKmpRelease(client.get(KMP_LATEST_RELEASE_URL).bodyAsText())
+            }
+        }
+
     /**
      * Get the download URL for the correct app variant
      */
@@ -198,13 +224,6 @@ object Updater {
         return releaseInfo.assets
             .find { it.architecture == currentArch && it.variant == currentVariant }
             ?.downloadUrl
-    }
-
-    /**
-     * Get all available download URLs for a release
-     */
-    fun getAllDownloadUrls(releaseInfo: ReleaseInfo): Map<String, String> {
-        return releaseInfo.assets.associate { "${it.architecture}-${it.variant}" to it.downloadUrl }
     }
 
     /**
@@ -219,7 +238,7 @@ object Updater {
                 
                 if (!shouldFetch && cachedReleaseInfo != null) {
                     val hasUpdate = isUpdateAvailable(
-                        BuildConfig.VERSION_NAME,
+                        BuildConfig.BASE_VERSION_NAME,
                         cachedReleaseInfo!!.versionName
                     )
                     return@runCatching cachedReleaseInfo!! to hasUpdate
@@ -229,7 +248,7 @@ object Updater {
                 if (result.isSuccess) {
                     val releaseInfo = result.getOrThrow()
                     val hasUpdate = isUpdateAvailable(
-                        BuildConfig.VERSION_NAME,
+                        BuildConfig.BASE_VERSION_NAME,
                         releaseInfo.versionName
                     )
                     releaseInfo to hasUpdate
@@ -239,14 +258,6 @@ object Updater {
             }
         }
 
-    /**
-     * Get the download URL for the correct app variant
-     * Returns null if no matching asset is found
-     */
-    fun getLatestDownloadUrl(): String? {
-        return cachedReleaseInfo?.let { getDownloadUrlForCurrentVariant(it) }
-    }
-    
     /**
      * Get the latest release info (cached)
      */

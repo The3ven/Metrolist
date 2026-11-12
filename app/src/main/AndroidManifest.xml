@@ -164,23 +164,10 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <activity
-            android:name=".discord.DiscordOAuthActivity"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.AppCompat.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="metrolistdiscord" />
-                <data android:host="oauth2" />
-                <data android:pathPrefix="/callback" />
-            </intent-filter>
-        </activity>
-
+        <!-- Legacy launcher alias kept for upgrade compatibility.
+             Users upgrading from older builds may have this component
+             pinned as a home-screen icon. Removing it would leave a
+             dead icon, so we preserve it as a compatibility shim. -->
         <activity-alias
             android:name=".MainActivityAlias"
             android:enabled="true"
@@ -209,6 +196,23 @@
             </intent-filter>
         </activity-alias>
 
+        <activity
+            android:name=".discord.DiscordOAuthActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.AppCompat.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="metrolistdiscord" />
+                <data android:host="oauth2" />
+                <data android:pathPrefix="/callback" />
+            </intent-filter>
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.FileProvider"
@@ -218,12 +222,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-
-        <provider
-            android:name="com.dpi.DensityScaler"
-            android:authorities="${applicationId}.com.dpi.DensityScaler"
-            android:enabled="true"
-            android:exported="false" />
 
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
@@ -365,11 +363,6 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/recognizer_widget_info" />
         </receiver>
-
-        <service
-            android:name=".widget.MusicRecognizerWidgetService"
-            android:exported="false"
-            android:foregroundServiceType="microphone" />
 
         <service
             android:name=".recognition.RecognitionForegroundService"

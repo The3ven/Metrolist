@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/icon.png" alt="Metrolist app icon" width="200" />
+<img src="fastlane/metadata/android/en-US/images/icon.png" alt="Metrolist app icon" width="200" />
 
 # Metrolist
 
@@ -8,10 +8,11 @@
 
 <br/>
 
-<a href="https://trendshift.io/repositories/20652" target="_blank">
-  <img src="https://trendshift.io/api/badge/repositories/20652" alt="MetrolistGroup/Metrolist | Trendshift" width="250" height="55" />
+<a href="https://www.blacksmith.sh">
+  <img src="assets/blacksmith-powered.png" alt="CI powered by Blacksmith" width="280" />
 </a>
 
+<br/>
 <br/>
 
 [![Latest release](https://img.shields.io/github/v/release/MetrolistGroup/Metrolist?style=for-the-badge&labelColor=0d1117)](https://github.com/MetrolistGroup/Metrolist/releases)
@@ -30,6 +31,11 @@
 </div>
 
 > [!WARNING]
+> # MAINTENANCE MODE
+> Metrolist is currently in maintenance mode. This means we will only be fixing bugs and making minor improvements. Please do not submit PRs for new features or major changes, as they will not be accepted.  
+> The app is **NOT** dead, please stay tuned for updates on our discord (found above).
+
+> [!WARNING]
 > **Regional Restriction** - If YouTube Music is unavailable in your region, this app will not work without a **VPN or proxy** connecting to a supported region.
 
 ---
@@ -38,12 +44,12 @@
 
 <h1><a id="screenshots"></a>Screenshots</h1>
 
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_1.png" alt="Home screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_2.png" alt="Artist screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_3.png" alt="Recognize music screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_4.png" alt="Listen together screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_5.png" alt="Player screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_6.png" alt="Player lyrics screen" width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_1.png" alt="Home screen" width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_2.png" alt="Artist screen" width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_3.png" alt="Recognize music screen" width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_4.png" alt="Listen together screen" width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_5.png" alt="Player screen" width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_6.png" alt="Player lyrics screen" width="30%" />
 
 </div>
 
@@ -71,6 +77,7 @@
 - Audio normalization
 - Tempo & pitch control
 - Equalizer
+- Crossfade
 
 </td>
   </tr>
@@ -101,6 +108,8 @@
 
 #### Social
 - Listen together with friends in real-time
+- Last.fm integration for scrobbling
+- Safe Discord Rich Presence
 
 </td>
     <td width="50%" valign="top">
@@ -133,12 +142,12 @@
   <tr>
     <td align="center">
       <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/MetrolistGroup/Metrolist/">
-        <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png" alt="Download from Obtainium" height="40">
+        <img src="assets/badges/obtainium.svg" alt="Add Metrolist to Obtainium" height="100">
       </a>
     </td>
     <td align="center">
       <a href="https://apt.izzysoft.de/fdroid/index/apk/com.metrolist.music">
-        <img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Download from IzzyOnDroid" height="60">
+        <img src="assets/badges/izzyondroid.svg" alt="Get Metrolist on IzzyOnDroid" height="100">
       </a>
     </td>
   </tr>
@@ -149,12 +158,12 @@
   <tr>
     <td align="center">
       <a href="https://www.openapk.net/metrolist/com.metrolist.music/">
-        <img src="https://www.openapk.net/images/openapk-badge.png" alt="Download from OpenAPK" height="60">
+        <img src="assets/badges/openapk.svg" alt="Get Metrolist on OpenAPK" height="100">
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/MetrolistGroup/Metrolist/releases/latest/download/Metrolist.apk">
-        <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="60">
+        <img src="assets/badges/github-stable.svg" alt="Get the stable Metrolist release on GitHub" height="100">
       </a>
     </td>
   </tr>
@@ -168,8 +177,8 @@
   </tr>
   <tr>
     <td align="center">
-      <a href="https://nightly.link/MetrolistGroup/Metrolist/workflows/build/main/app-with-Google-Cast.zip">
-        <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
+      <a href="https://github.com/MetrolistGroup/Metrolist/releases/download/nightly/Metrolist-with-Google-Cast.apk">
+        <img src="assets/badges/github-nightly.svg" alt="Get the Metrolist nightly build on GitHub" height="120">
       </a>
     </td>
   </tr>
@@ -215,7 +224,7 @@
 
 #### Monero (XMR)
 
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/assets/XMR.png" alt="Monero QR code" width="150" />
+<img src="assets/XMR.png" alt="Monero QR code" width="150" />
 
 ```text
 44XjSELSWcgJTZiCKzjpCQWyXhokrH9RqH3rpp35FkSKi57T25hniHWHQNhLeXyFn3DDYqufmfRB1iEtENerZpJc7xJCcqt
@@ -224,7 +233,7 @@
 #### Buy Me a Coffee
 
 <a href="https://www.buymeacoffee.com/mostafaalagamy">
-  <img src="https://github.com/MetrolistGroup/Metrolist/blob/main/assets/buymeacoffee.png?raw=true" alt="Buy Me a Coffee" width="150" />
+  <img src="assets/buymeacoffee.png" alt="Buy Me a Coffee" width="150" />
 </a>
 
 </div>
@@ -280,8 +289,22 @@
       <td align="center"><a href="https://github.com/aleksey-saenko/MusicRecognizer"><strong>MusicRecognizer</strong></a></td>
       <td>Music recognition feature & Shazam API integration</td>
     </tr>
+    <tr>
+      <td align="center"><a href="https://github.com/ZemerTeam/zemer-cipher"><strong>zemer-cipher</strong></a></td>
+      <td>YouTube cipher deobfuscation and PoToken generation</td>
+    </tr>
+    <tr>
+      <td align="center"><a href="https://www.blacksmith.sh"><strong>Blacksmith</strong></a></td>
+      <td>High-performance GitHub Actions runners powering our CI</td>
+    </tr>
   </tbody>
 </table>
+
+<br/>
+
+<a href="https://www.blacksmith.sh">
+  <img src="assets/blacksmith-powered.png" alt="CI powered by Blacksmith" width="280" />
+</a>
 
 <h3>We also thank the entire open-source community! For every library, tool, and API that powers this project.</h3>
 

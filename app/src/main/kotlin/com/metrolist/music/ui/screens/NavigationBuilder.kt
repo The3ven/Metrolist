@@ -55,7 +55,6 @@ import com.metrolist.music.ui.screens.settings.RomanizationSettings
 import com.metrolist.music.ui.screens.settings.SettingsScreen
 import com.metrolist.music.ui.screens.settings.LogsSettings
 import com.metrolist.music.ui.screens.settings.StorageSettings
-import com.metrolist.music.ui.screens.settings.StreamSourcesSettings
 import com.metrolist.music.ui.screens.settings.ThemeScreen
 import com.metrolist.music.ui.screens.settings.UpdaterScreen
 import com.metrolist.music.ui.screens.settings.integrations.DiscordSettings
@@ -353,7 +352,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("settings/appearance") {
-        AppearanceSettings(navController, activity, snackbarHostState)
+        AppearanceSettings(navController, snackbarHostState)
     }
 
     composable("settings/appearance/theme") {
@@ -374,10 +373,6 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("settings/player") {
         PlayerSettings(navController)
-    }
-
-    composable("settings/stream_sources") {
-        StreamSourcesSettings(navController)
     }
 
     composable("settings/storage") {
@@ -432,6 +427,13 @@ fun NavGraphBuilder.navigationBuilder(
         LoginScreen(navController)
     }
 
+    composable("switch_channel") {
+        LoginScreen(
+            navController = navController,
+            isSwitchingChannel = true,
+        )
+    }
+
     composable("wrapped") {
         WrappedScreen()
     }
@@ -463,6 +465,6 @@ fun NavGraphBuilder.navigationBuilder(
         RecognitionHistoryScreen(navController)
     }
     composable("settings/android_auto") {
-        AndroidAutoSettings(navController, scrollBehavior)
+        AndroidAutoSettings(navController)
     }
 }

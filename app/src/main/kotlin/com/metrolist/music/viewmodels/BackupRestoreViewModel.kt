@@ -25,6 +25,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.metrolist.music.constants.DataSyncIdKey
+import com.metrolist.music.constants.InnerTubeAuthUserKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.db.InternalDatabase
@@ -37,9 +38,11 @@ import com.metrolist.music.extensions.tryOrNull
 import com.metrolist.music.extensions.zipInputStream
 import com.metrolist.music.extensions.zipOutputStream
 import com.metrolist.music.playback.MusicService
+import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_AUTOMIX_FILE
+import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_PLAYER_STATE_FILE
 import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
-import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.reportException
+import com.metrolist.music.utils.ArtistNameAliases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -84,6 +87,8 @@ class BackupRestoreViewModel @Inject constructor(
                             outputStream.putNextEntry(ZipEntry(SETTINGS_FILENAME))
                             inputStream.copyTo(outputStream)
                         }
+                    outputStream.putNextEntry(ZipEntry(ArtistNameAliases.BACKUP_FILENAME))
+                    outputStream.write(ArtistNameAliases.serialize().encodeToByteArray())
                     runBlocking(Dispatchers.IO) {
                         database.checkpoint()
                     }
@@ -121,14 +126,13 @@ class BackupRestoreViewModel @Inject constructor(
     fun restore(context: Context, uri: Uri, clearAuthData: Boolean = false) {
         // Run in viewModelScope to allow suspending
         viewModelScope.launch(Dispatchers.IO) {
-            var migrationSucceeded: Boolean? = null
             val restoreDbName = "restored_${InternalDatabase.DB_NAME}"
             val restoreDbPath = context.getDatabasePath(restoreDbName).absolutePath
             val tempSettings = File(context.filesDir, "datastore/$SETTINGS_FILENAME.restore")
-            
+
             runCatching {
                 Timber.tag("RESTORE").i("Starting restore from URI: $uri, clearAuthData: $clearAuthData")
-                
+
                 val currentDbPath = database.openHelper.writableDatabase.path
                 if (currentDbPath == null) {
                     Timber.tag("RESTORE").e("Database path is null, cannot restore")
@@ -142,6 +146,7 @@ class BackupRestoreViewModel @Inject constructor(
 
                 var foundDb = false
                 var foundSettings = false
+                var restoredArtistNameAliases: Map<String, String>? = null
 
                 context.applicationContext.contentResolver.openInputStream(uri)?.use { raw ->
                     raw.zipInputStream().use { inputStream ->
@@ -150,32 +155,24 @@ class BackupRestoreViewModel @Inject constructor(
                             Timber.tag("RESTORE").i("Found zip entry: ${entry.name}")
                             when (entry.name) {
                                 SETTINGS_FILENAME -> {
-                                    Timber.tag("RESTORE").i("Restoring settings to temp file")
                                     foundSettings = true
-                                    tempSettings.outputStream().use { outputStream ->
-                                        inputStream.copyTo(outputStream)
-                                    }
+                                    tempSettings.outputStream().use { it.write(inputStream.readBytes()) }
+                                }
+                                ArtistNameAliases.BACKUP_FILENAME -> {
+                                    restoredArtistNameAliases =
+                                        ArtistNameAliases.deserialize(inputStream.readBytes().decodeToString())
                                 }
                                 InternalDatabase.DB_NAME -> {
-                                    Timber.tag("RESTORE").i("Restoring DB to temp file")
                                     foundDb = true
-                                    FileOutputStream(restoreDbPath).use { outputStream ->
-                                        inputStream.copyTo(outputStream)
-                                    }
+                                    FileOutputStream(restoreDbPath).use { inputStream.copyTo(it) }
                                 }
                                 "${InternalDatabase.DB_NAME}-wal" -> {
-                                    FileOutputStream("$restoreDbPath-wal").use { outputStream ->
-                                        inputStream.copyTo(outputStream)
-                                    }
+                                    // Skip WAL — we'll open cleanly
                                 }
                                 "${InternalDatabase.DB_NAME}-shm" -> {
-                                    FileOutputStream("$restoreDbPath-shm").use { outputStream ->
-                                        inputStream.copyTo(outputStream)
-                                    }
+                                    // Skip SHM — we'll open cleanly
                                 }
-                                else -> {
-                                    Timber.tag("RESTORE").i("Skipping unexpected entry: ${entry.name}")
-                                }
+                                else -> Timber.tag("RESTORE").i("Skipping unexpected entry: ${entry.name}")
                             }
                             entry = tryOrNull { inputStream.nextEntry }
                         }
@@ -187,127 +184,162 @@ class BackupRestoreViewModel @Inject constructor(
 
                 if (!foundDb && !foundSettings) {
                     Timber.tag("RESTORE").w("No expected entries found in archive")
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        Toast.makeText(context, R.string.restore_failed, Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
                 }
 
+                var backupDbVersion = -1
+                var currentDbVersion = -1
                 if (foundDb) {
-                    Timber.tag("RESTORE").i("Temp DB restore complete, triggering migrations")
-                    try {
-                        val migratedDb = InternalDatabase.newInternalDatabaseInstance(context, restoreDbName)
-                        migratedDb.openHelper.writableDatabase
-                        migratedDb.close()
-                        Timber.tag("RESTORE").i("Migrations completed successfully")
-                        migrationSucceeded = true
-                    } catch (e: Exception) {
-                        Timber.tag("RESTORE").e(e, "Migration failed for restored DB")
-                        migrationSucceeded = false
+                    // Read backup DB version using raw SQLite (no Room involvement)
+                    backupDbVersion = InternalDatabase.readDatabaseVersion(restoreDbPath)
+                    if (backupDbVersion <= 0) {
+                        Timber.tag("RESTORE").e("Cannot read backup database version")
+                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                            Toast.makeText(context, R.string.restore_database_incompatible, Toast.LENGTH_LONG).show()
+                        }
+                        return@launch
                     }
-                } else {
-                    migrationSucceeded = true
+                    // Read current database version dynamically — this matches whatever Room
+                    // annotation says, even when the schema version changes in future builds.
+                    currentDbVersion = database.openHelper.writableDatabase.version
+                    if (backupDbVersion > currentDbVersion) {
+                        Timber.tag("RESTORE").w(
+                            "Backup DB version $backupDbVersion > current $currentDbVersion, incompatible"
+                        )
+                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                            Toast.makeText(context, R.string.restore_database_incompatible, Toast.LENGTH_LONG).show()
+                        }
+                        return@launch
+                    }
                 }
 
-                if (migrationSucceeded == true) {
-                    context.stopService(Intent(context, MusicService::class.java))
-                    if (MusicService.isRunning) {
-                        try {
-                            kotlinx.coroutines.withTimeout(5000) {
-                                MusicService.shutdownDeferred.await()
-                            }
-                        } catch (e: Exception) {
-                            Timber.e(e, "Timeout waiting for MusicService to shutdown")
-                        }
-                    }
-                    
-                    // Service is stopped and DB is closed by the service. But in case it wasn't:
-                    database.close()
+                // === Proceed with restore ===
 
-                    var dbSwapSucceeded = true
-                    if (foundDb) {
-                        val tmpDb = File("$currentDbPath.tmp")
-                        val tmpWal = File("$currentDbPath-wal.tmp")
-                        val tmpShm = File("$currentDbPath-shm.tmp")
-                        
-                        try {
-                            File(restoreDbPath).copyTo(tmpDb, overwrite = true)
-                            val restoreWal = File("$restoreDbPath-wal")
-                            if (restoreWal.exists()) restoreWal.copyTo(tmpWal, overwrite = true)
-                            val restoreShm = File("$restoreDbPath-shm")
-                            if (restoreShm.exists()) restoreShm.copyTo(tmpShm, overwrite = true)
-                            
-                            // Atomic rename
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                java.nio.file.Files.move(tmpDb.toPath(), File(currentDbPath).toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                                if (tmpWal.exists()) {
-                                    java.nio.file.Files.move(tmpWal.toPath(), File("$currentDbPath-wal").toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                                } else {
-                                    File("$currentDbPath-wal").delete()
-                                }
-                                if (tmpShm.exists()) {
-                                    java.nio.file.Files.move(tmpShm.toPath(), File("$currentDbPath-shm").toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                                } else {
-                                    File("$currentDbPath-shm").delete()
-                                }
-                            } else {
-                                tmpDb.renameTo(File(currentDbPath))
-                                if (tmpWal.exists()) {
-                                    tmpWal.renameTo(File("$currentDbPath-wal"))
-                                } else {
-                                    File("$currentDbPath-wal").delete()
-                                }
-                                if (tmpShm.exists()) {
-                                    tmpShm.renameTo(File("$currentDbPath-shm"))
-                                } else {
-                                    File("$currentDbPath-shm").delete()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to swap DB files atomically")
-                            dbSwapSucceeded = false
-                        } finally {
-                            tmpDb.delete()
-                            tmpWal.delete()
-                            tmpShm.delete()
-                        }
+                // 1. Stop service first — ensures no pending DB writes during swap
+                context.stopService(Intent(context, MusicService::class.java))
+                try {
+                    kotlinx.coroutines.withTimeout(5000) {
+                        MusicService.shutdownDeferred.await()
                     }
+                } catch (e: Exception) {
+                    Timber.e(e, "Timeout waiting for MusicService to shutdown")
+                }
 
-                    if (dbSwapSucceeded) {
-                        if (foundSettings) {
-                            val actualSettings = File(context.filesDir, "datastore/$SETTINGS_FILENAME")
+                // 2. Close the database — all operations should be done by now
+                database.close()
+
+                // 3. Swap DB files — staged copy to avoid corrupting the live DB
+                var dbSwapSucceeded = true
+                if (foundDb) {
+                    try {
+                        val currentFile = File(currentDbPath)
+                        val stagedFile = File("$currentDbPath.restore_staged")
+                        val backupFile = File("$currentDbPath.restore_backup")
+
+                        stagedFile.delete()
+                        backupFile.delete()
+
+                        File(restoreDbPath).copyTo(stagedFile, overwrite = true)
+
+                        // Preserve current DB, promote staged, remove backup
+                        if (!currentFile.renameTo(backupFile)) {
+                            error("Failed to preserve current DB before restore")
+                        }
+                        if (!stagedFile.renameTo(currentFile)) {
+                            // Rollback: restore the original
+                            backupFile.renameTo(currentFile)
+                            error("Failed to promote restored DB")
+                        }
+                        backupFile.delete()
+
+                        // Delete stale WAL/SHM so the DB opens clean
+                        File("$currentDbPath-wal").delete()
+                        File("$currentDbPath-shm").delete()
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to swap DB files")
+                        dbSwapSucceeded = false
+                    }
+                }
+
+                if (dbSwapSucceeded) {
+                    if (foundSettings) {
+                        // If auth data needs clearing, strip auth keys from the temp file
+                        // before copying to actualSettings. This avoids issues with
+                        // DataStore's in-memory cache being stale after a raw file swap.
+                        if (clearAuthData) {
+                            runCatching {
+                                // Open a temporary DataStore for the staged settings file
+                                // to remove auth keys before promoting it to the live path.
+                                val settingsBaseName = SETTINGS_FILENAME.removeSuffix(".preferences_pb")
+                                val stageSettings = File(
+                                    context.filesDir,
+                                    "datastore/${settingsBaseName}.stage.preferences_pb",
+                                )
+                                stageSettings.delete()
+                                tempSettings.copyTo(stageSettings, overwrite = true)
+
+                                val stageDataStore =
+                                    androidx.datastore.preferences.core.PreferenceDataStoreFactory.create {
+                                        stageSettings
+                                    }
+                                kotlinx.coroutines.runBlocking {
+                                    stageDataStore.edit { prefs ->
+                                        prefs.remove(InnerTubeCookieKey)
+                                        prefs.remove(VisitorDataKey)
+                                        prefs.remove(DataSyncIdKey)
+                                        prefs.remove(InnerTubeAuthUserKey)
+                                    }
+                                }
+
+                                val actualSettings = File(
+                                    context.filesDir,
+                                    "datastore/$SETTINGS_FILENAME",
+                                )
+                                stageSettings.copyTo(actualSettings, overwrite = true)
+                                stageSettings.delete()
+                            }.onFailure {
+                                Timber.tag("RESTORE").e(it, "Failed to clear auth from restored settings")
+                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, R.string.restore_failed, Toast.LENGTH_SHORT).show()
+                                }
+                                return@launch
+                            }
+                        } else {
+                            val actualSettings = File(
+                                context.filesDir,
+                                "datastore/$SETTINGS_FILENAME",
+                            )
                             tempSettings.copyTo(actualSettings, overwrite = true)
                         }
-
-                        if (clearAuthData) {
-                            Timber.tag("RESTORE").i("Clearing auth data to prevent stale session issues")
-                            context.dataStore.edit { preferences ->
-                                preferences.remove(InnerTubeCookieKey)
-                                preferences.remove(VisitorDataKey)
-                                preferences.remove(DataSyncIdKey)
-                            }
-                        }
-
-                        context.filesDir.resolve(MusicService.PERSISTENT_QUEUE_FILE).delete()
-                        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        }
-                        context.startActivity(intent)
-                        Runtime.getRuntime().exit(0)
-                    } else {
-                        kotlinx.coroutines.withContext(Dispatchers.Main) {
-                            Toast.makeText(context, R.string.restore_failed, Toast.LENGTH_SHORT).show()
-                        }
                     }
+
+                    context.filesDir.resolve(PERSISTENT_QUEUE_FILE).delete()
+                    context.filesDir.resolve(PERSISTENT_AUTOMIX_FILE).delete()
+                    context.filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE).delete()
+                    ArtistNameAliases.restore(context, restoredArtistNameAliases.orEmpty())
+
+                    // 4. Restart — Room will open the swapped DB and run migrations if needed
+                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    }
+                    context.startActivity(intent)
+                    Runtime.getRuntime().exit(0)
                 } else {
                     kotlinx.coroutines.withContext(Dispatchers.Main) {
-                        Toast.makeText(context, R.string.restore_database_incompatible, Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, R.string.restore_failed, Toast.LENGTH_SHORT).show()
                     }
                 }
             }.onFailure {
                 reportException(it)
-                Timber.tag("RESTORE").e(it, "Restore failed")
+                Timber.tag("RESTORE").e(it, "Restore failed unexpectedly")
                 kotlinx.coroutines.withContext(Dispatchers.Main) {
                     Toast.makeText(context, R.string.restore_failed, Toast.LENGTH_SHORT).show()
                 }
             }
-            
+
             File(restoreDbPath).delete()
             File("$restoreDbPath-wal").delete()
             File("$restoreDbPath-shm").delete()
@@ -333,9 +365,13 @@ class BackupRestoreViewModel @Inject constructor(
                                 extractCookieFromPrefs(content)
                             } else null
 
+                            val accountName = if (hasAuthData) {
+                                extractAccountNameFromPrefs(content) ?: "YouTube Account"
+                            } else null
+
                             return BackupPreviewInfo(
                                 hasAuthData = hasAuthData,
-                                accountName = null,
+                                accountName = accountName,
                                 accountEmail = null,
                                 accountImageUrl = null,
                                 cookie = cookie,
@@ -350,6 +386,12 @@ class BackupRestoreViewModel @Inject constructor(
             Timber.tag("BACKUP_PREVIEW").e(it, "Failed to preview backup")
             BackupPreviewInfo()
         }
+    }
+
+    private fun extractAccountNameFromPrefs(content: String): String? {
+        val sessionPattern = Regex("""(?:SESSION_INDEX|sessionIndex|session)_?\s*["':]*\s*(\d+)""")
+        val index = sessionPattern.find(content)?.groupValues?.getOrNull(1)
+        return if (index != null) "Account #$index" else null
     }
 
     private fun extractCookieFromPrefs(content: String): String? {

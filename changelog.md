@@ -1,3 +1,97 @@
+---v13.7.0
+# KMP status update
+Metrolist-KMP remains in alpha, but tester feedback has been very positive. To try it, join our Discord and donate at least $1 to support development.
+
+## Highlights
+- Migrated networking to InnerTubeX with automatic client fallback (@nyxiereal)
+- Reduced memory use and background work in large libraries, History, Cache, Android Auto, and audio processing (@makro17 @nyxiereal)
+- Repaired older-version upgrades, Android Auto browsing, artist metadata, and YouTube channel switching (@nyxiereal)
+- Improved login, account loading, uploads, downloads, caching, metadata editing, and playlist sync (@nyxiereal)
+- Restored the classic app icon (@nyxiereal)
+
+## New features
+- Choose whether songs are added to the start or end of playlists (@nyxiereal)
+- Added Zemer lyrics for Jewish music (@alltechdev)
+- Added detailed, copyable playback error reports (@nyxiereal)
+- Added a unified update prompt for standalone and KMP releases (@nyxiereal)
+- Added Inception AI models and improved lyric translation output (@nyxiereal)
+- Restored universal x86 and x86_64 support (@nyxiereal)
+
+## Fixes and improvements
+- Fixed missing or cropped artwork and improved timed and Cyrillic lyrics (@RizkLee @GameOn223 @Cocoa2219 @nyxiereal)
+- Preserved manual metadata edits during refreshes and corrected Cache Playlist contents (@nyxiereal)
+- Fixed repeat and shuffle with crossfade, Listen Together stutter, and paused queues restarting at the end (@nyxiereal)
+- Fixed per-song volume normalization and improved playback recovery (@nyxiereal)
+- Fixed dismissed media controls reappearing and several startup crashes (@nyxiereal)
+- Protected local likes from incomplete sync responses and improved uploaded-song handling (@nyxiereal)
+- Updated dependencies and CI (@nyxiereal)
+
+New contributors: @RizkLee (#4277), @GameOn223 (#4269), and @makro17 (#4270)
+
+**Full changelog**: https://github.com/MetrolistGroup/Metrolist/compare/v13.6.3...v13.7.0
+
+---v13.6.3
+
+This is a hotfix release to fix borked lyrics and media controller. We apologize for the inconvenience.  
+
+~ MetrolistGroup
+
+---v13.6.2
+# THE FUTURE OF METROLIST
+Metrolist KMP is almost ready. We are ironing out the remaining bugs and preparing for release, but it is still at least a couple of weeks away.
+
+# Major changes
+- Fixed playback issues caused by changes that also broke official apps (@nyxiereal)
+- Fixed playlist sync duplication and out-of-memory crashes (@kairosci)
+- Improved automatic player configuration updates for future YouTube changes (@mostafaalagamy @nyxiereal)
+
+## Notable new features
+- Added handling for KMP updates and migrations (@nyxiereal)
+
+## Other improvements
+- Improved Android Auto voice search matching and radio queue generation (@FireLion137)
+- Added an Android Auto search limit and optimized local searches to prevent out-of-memory crashes (@FireLion137)
+- Fixed podcast playback errors (@kairosci)
+- Fixed crossfade timing at non-default playback speeds (@kairosci)
+- Fixed the app lingering in the background after it was closed (@kairosci)
+- Fixed sleep timer dialog layouts and menus containing long translated text (@kairosci)
+- Fixed the persistent shuffle setting not working (@SimoneFelici)
+- Dimmed the repeat button when repeat is disabled (@arpitagarwal1301)
+- Rounded the corners of exported lyrics images (@arpitagarwal1301)
+- Updated dependencies (@nyxiereal)
+
+## New Contributors
+* @SimoneFelici made their first contribution in https://github.com/MetrolistGroup/Metrolist/pull/4102
+* @arpitagarwal1301 made their first contribution in https://github.com/MetrolistGroup/Metrolist/pull/4178
+
+**Full Changelog**: https://github.com/MetrolistGroup/Metrolist/compare/v13.6.1...v13.6.2
+
+---v13.6.1
+# THE FUTURE OF METROLIST
+The new Kotlin Multiplatform version of Metrolist is now in a good state, and we are aiming to release it within the next month. Until then, the current app will remain in maintenance mode and receive bug fixes and minor improvements.
+
+# Major changes
+- Improved playback reliability and recovery from YouTube player failures (@alltechdev @JASK625 @kairosci @mostafaalagamy @nyxiereal)
+- Fixed black screens, startup crashes, and playback freezes (@kairosci @mostafaalagamy @nyxiereal)
+- Improved Listen Together synchronization (@nyxiereal)
+
+## Notable new features
+- Added refreshed branding and an optional dynamic app icon (@mostafaalagamy)
+- Added predictive back support and improved landscape scaling (@HansHolz09 @kairosci)
+
+## Other improvements
+- Fixed login, logout, and backup restoration issues (@mostafaalagamy @kairosci @nyxiereal)
+- Fixed incorrect artist names, song durations, podcast metadata, and missing artwork (@alltechdev @kairosci @mostafaalagamy @nyxiereal)
+- Fixed Android Auto freezes and playback delays (@kairosci)
+- Fixed foreground service ANRs and multiple other crashes (@kairosci @mostafaalagamy)
+- Fixed sleep timer crashes and restored saved defaults (@johannesbrauer @mostafaalagamy)
+- Improved library sync performance and YouTube player compatibility (@mostafaalagamy @nyxiereal)
+
+## New Contributors
+* @HansHolz09 made their first contribution in https://github.com/MetrolistGroup/Metrolist/pull/3837
+
+**Full Changelog**: https://github.com/MetrolistGroup/Metrolist/compare/v13.6.0...v13.6.1
+
 ---v13.5.0
 # MAINTENANCE MODE
 Metrolist is currently in maintenance mode. This means we will only be fixing bugs and making minor improvements. Please do not submit PRs for new features or major changes, as they will not be accepted.

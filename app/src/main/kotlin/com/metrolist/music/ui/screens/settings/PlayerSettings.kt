@@ -41,9 +41,6 @@ import com.metrolist.music.constants.AudioOffload
 import com.metrolist.music.constants.AudioTrackPlaybackParamsKey
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.constants.AudioQualityKey
-import com.metrolist.music.constants.HifiApiUrlKey
-import com.metrolist.music.ui.component.TextFieldDialog
-import androidx.compose.ui.text.input.TextFieldValue
 import com.metrolist.music.constants.AutoDownloadOnLikeKey
 import com.metrolist.music.constants.CrossfadeDurationKey
 import com.metrolist.music.constants.CrossfadeEnabledKey
@@ -102,11 +99,6 @@ fun PlayerSettings(
         AudioQualityKey,
         defaultValue = AudioQuality.AUTO
     )
-    val (hifiApiUrl, onHifiApiUrlChange) = rememberPreference(
-        HifiApiUrlKey,
-        defaultValue = ""
-    )
-    var showHifiUrlDialog by remember { mutableStateOf(false) }
     val (crossfadeEnabled, onCrossfadeEnabledChange) = rememberPreference(
         CrossfadeEnabledKey,
         defaultValue = false
@@ -254,23 +246,8 @@ fun PlayerSettings(
                     AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
                     AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
                     AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
-                    AudioQuality.LOSSLESS -> stringResource(R.string.audio_quality_lossless)
-                    AudioQuality.HI_RES_LOSSLESS -> stringResource(R.string.audio_quality_hi_res_lossless)
                 }
             }
-        )
-    }
-
-    if (showHifiUrlDialog) {
-        TextFieldDialog(
-            title = { Text(stringResource(R.string.hifi_api_url)) },
-            initialTextFieldValue = TextFieldValue(text = hifiApiUrl),
-            isInputValid = { true }, // allow empty to disable
-            onDone = {
-                onHifiApiUrlChange(it.trim())
-                showHifiUrlDialog = false
-            },
-            onDismiss = { showHifiUrlDialog = false },
         )
     }
 
@@ -318,20 +295,10 @@ fun PlayerSettings(
                                 AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
                                 AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
                                 AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
-                                AudioQuality.LOSSLESS -> stringResource(R.string.audio_quality_lossless)
-                                AudioQuality.HI_RES_LOSSLESS -> stringResource(R.string.audio_quality_hi_res_lossless)
                             }
                         )
                     },
                     onClick = { showAudioQualityDialog = true }
-                ))
-                add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.graphic_eq),
-                    title = { Text(stringResource(R.string.hifi_api_url)) },
-                    description = {
-                        Text(if (hifiApiUrl.isBlank()) stringResource(R.string.hifi_api_url_desc) else hifiApiUrl)
-                    },
-                    onClick = { showHifiUrlDialog = true }
                 ))
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.linear_scale),
